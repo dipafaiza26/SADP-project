@@ -1,42 +1,37 @@
 import java.io.Serializable;
 
-public class Customer implements Serializable 
-{
+public class Customer implements Serializable {
     private int customerId;
     private String name;
     private Gender gender;
 
-    public Customer(int customerId, String name, Gender gender)
-     {
+    
+    private static Customer currentCustomer = null;
+
+    
+    public Customer(int customerId, String name, Gender gender) {
         this.customerId = customerId;
         this.name = name;
         this.gender = gender;
     }
-    public void setCustomerId(int customerId)
-    {
-        this.customerId=customerId;
-    }
-    public int getCustomerId()
-    {
-        return customerId;
-    }
-    public void setName(String name)
-    {
-        this.name=name;
+
+    // Singleton access
+    public static Customer getCurrentCustomer() {
+        if (currentCustomer == null) {
+            currentCustomer = new Customer(0, "Guest", Gender.MALE);
+        }
+        return currentCustomer;
     }
 
-    public String getName()
-    {
-        return name;
+    public static void setCurrentCustomer(Customer customer) {
+        currentCustomer = customer;
     }
 
-
-    public void setGender(Gender gender)
-    {
-        this.gender=gender;
-    }
-    public Gender getGender() 
-    {
-        return gender;
-    }
+    
+    public int getCustomerId() { return customerId; }
+    public String getName() { return name; }
+    public Gender getGender() { return gender; }
+    public void setCustomerId(int customerId) { this.customerId = customerId; }
+    public void setName(String name) { this.name = name; }
+    public void setGender(Gender gender) { this.gender = gender; }
 }
