@@ -1,88 +1,73 @@
-import java.io.*;
-import java.util.ArrayList;
-
-
 public class HotelFacade {
-    
-    private static final String CUSTOMER_FILE = "customers.dat";
-    private static final String ROOM_FILE = "rooms.dat";
-    private static final String RESERVATION_FILE = "reservations.dat";
-    
-    
-    public void saveCustomers(ArrayList<Customer> customers) {
-        saveToFile(customers, CUSTOMER_FILE);
+    private HotelDataState state;
+    private HotelStateCaretaker caretaker;
+    private StorageStrategy storageStrategy;
+
+    public HotelFacade(StorageStrategy storageStrategy) {
+        this.storageStrategy = storageStrategy;
+        this.caretaker = new HotelStateCaretaker();
+        // Load state using Strategy
+        this.state = this.storageStrategy.load();
     }
-    
-    @SuppressWarnings("unchecked")
-    public ArrayList<Customer> loadCustomers() {
-        ArrayList<Customer> customers = (ArrayList<Customer>) loadFromFile(CUSTOMER_FILE);
-        return customers != null ? customers : new ArrayList<>();
+
+    // Save Data
+    public void saveData() {
+        storageStrategy.save(state);
     }
-    
-    
-    public void saveRooms(ArrayList<Room> rooms) {
-        saveToFile(rooms, ROOM_FILE);
-    }
-    
-    @SuppressWarnings("unchecked")
-    public ArrayList<Room> loadRooms() {
-        ArrayList<Room> rooms = (ArrayList<Room>) loadFromFile(ROOM_FILE);
-        return rooms != null ? rooms : new ArrayList<>();
-    }
-    
-    
-    public void saveReservations(ArrayList<Reservation> reservations) {
-        saveToFile(reservations, RESERVATION_FILE);
-    }
-    
-    @SuppressWarnings("unchecked")
-    public ArrayList<Reservation> loadReservations() {
-        ArrayList<Reservation> reservations = (ArrayList<Reservation>) loadFromFile(RESERVATION_FILE);
-        return reservations != null ? reservations : new ArrayList<>();
-    }
-    
-    
-    private void saveToFile(Object data, String filename) {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
-            oos.writeObject(data);
-        } catch (Exception e) {
-            System.err.println("Error saving to " + filename + ": " + e.getMessage());
+
+    // Undo functionality (Memento)
+    public void undoLastAction() {
+        if (caretaker.hasHistory()) {
+            caretaker.restoreState(state);
+            saveData();
         }
     }
-    
-    
-    private Object loadFromFile(String filename) {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
-            return ois.readObject();
-        } catch (Exception e) {
-            return null;
-        }
+
+    private void executeCommand(Command command) {
+        caretaker.saveState(state); // Save snapshot before executing
+        command.execute();
+        saveData(); // Save to persistent storage after change
     }
-    
-    
-    public boolean hasCustomerData() {
-        return new File(CUSTOMER_FILE).exists();
+
+    // --- Customer Operations ---
+
+    public Iterator<Customer> getCustomers() {
+        return new HotelCollection<>(state.getCustomers()).createIterator();
     }
-    
-    public boolean hasRoomData() {
-        return new File(ROOM_FILE).exists();
+
+    public void addCustomer(Customer customer) {
+        executeCommand(new AddCustomerCommand(state, customer));
     }
-    
-    public boolean hasReservationData() {
-        return new File(RESERVATION_FILE).exists();
+
+    public void deleteCustomer(int index) {
+        executeCommand(new DeleteCustomerCommand(state, index));
     }
-    
-    
-    public void clearAllData() {
-        deleteFile(CUSTOMER_FILE);
-        deleteFile(ROOM_FILE);
-        deleteFile(RESERVATION_FILE);
+
+    // --- Room Operations ---
+
+    public Iterator<Room> getRooms() {
+        return new HotelCollection<>(state.getRooms()).createIterator();
     }
-    
-    private void deleteFile(String filename) {
-        File file = new File(filename);
-        if (file.exists()) {
-            file.delete();
-        }
+
+    public void addRoom(Room room) {
+        executeCommand(new AddRoomCommand(state, room));
+    }
+
+    public void deleteRoom(int index) {
+        executeCommand(new DeleteRoomCommand(state, index));
+    }
+
+    // --- Reservation Operations ---
+
+    public Iterator<Reservation> getReservations() {
+        return new HotelCollection<>(state.getReservations()).createIterator();
+    }
+
+    public void addReservation(Reservation reservation) {
+        executeCommand(new AddReservationCommand(state, reservation));
+    }
+
+    public void deleteReservation(int index) {
+        executeCommand(new DeleteReservationCommand(state, index));
     }
 }

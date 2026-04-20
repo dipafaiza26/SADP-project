@@ -1,56 +1,87 @@
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+import javax.swing.JLabel;
+import javax.swing.SwingConstants;
+import javax.swing.JOptionPane;
+import javax.swing.border.EmptyBorder;
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.Dimension;
+import java.awt.Color;
 
-public class MainMenu extends JFrame {
+public class MainMenu extends JFrame 
+{
 
-    public MainMenu() {
-        setTitle("Hotel Reservation System");
-        setSize(450, 350);
+    private HotelFacade facade;
+
+    public MainMenu() 
+    {
+        StorageStrategy strategy = new FileStorageStrategy("hotel_data.dat");
+        facade = new HotelFacade(strategy);
+
+        setTitle("AURORA HAVEN | Hotel Reservation System");
+        setSize(800, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setBackground(UITheme.BG_CREAM);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(3, 1, 10, 10));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BorderLayout(0, 40));
+        UITheme.stylePanel(mainPanel);
+        mainPanel.setBorder(new EmptyBorder(50, 100, 50, 100));
 
-        JLabel title = new JLabel("Hotel Reservation System");
-        title.setFont(new Font("Arial", Font.BOLD, 20));
-        title.setHorizontalAlignment(JLabel.CENTER);
-        panel.add(title);
-
-        JButton btnRoom = new JButton("Manage Rooms (Factory Pattern)");
-        JButton btnCustomer = new JButton("Manage Customers (Facade Pattern)");
-        JButton btnExit = new JButton("Exit");
-
-        Color btnColor = Color.GRAY;
-        btnRoom.setBackground(btnColor);
-        btnRoom.setForeground(Color.WHITE);
-        btnCustomer.setBackground(btnColor);
-        btnCustomer.setForeground(Color.WHITE);
-        btnExit.setBackground(btnColor);
-        btnExit.setForeground(Color.WHITE);
-
-        panel.add(btnRoom);
-        panel.add(btnCustomer);
-        panel.add(btnExit);
-
-        add(panel);
-
-        // Factory Pattern এর জন্য RoomForm খোলা হবে
-        btnRoom.addActionListener(e -> new RoomForm());
+       
+        JPanel headerPanel = new JPanel(new GridLayout(2, 1, 0, 5));
+        headerPanel.setOpaque(false);
         
-        // Facade Pattern এর জন্য CustomerForm খোলা হবে
-        btnCustomer.addActionListener(e -> new CustomerForm());
+        JLabel lblTitle = new JLabel("AURORA HAVEN", SwingConstants.CENTER);
+        UITheme.styleTitle(lblTitle);
+        lblTitle.setFont(lblTitle.getFont().deriveFont(42f));
         
-        // Exit বাটন
-        btnExit.addActionListener(e -> System.exit(0));
+        JLabel lblSubtitle = new JLabel("Bespoke Reservations", SwingConstants.CENTER);
+        UITheme.styleLabel(lblSubtitle);
+        
+        headerPanel.add(lblTitle);
+        headerPanel.add(lblSubtitle);
+
+        JPanel buttonsPanel = new JPanel(new GridLayout(4, 1, 0, 20));
+        buttonsPanel.setOpaque(false);
+        buttonsPanel.setBorder(new EmptyBorder(20, 150, 20, 150));
+
+        RoundedButton btnRoom = new RoundedButton("Manage Suites");
+        RoundedButton btnCustomer = new RoundedButton("Guest Directory");
+        RoundedButton btnReservation = new RoundedButton("Bookings");
+        RoundedButton btnUndo = new RoundedButton("Undo Last Action");
+
+       
+        btnUndo.setColor(new Color(190, 150, 120));
+        btnUndo.setColorOver(new Color(210, 170, 140));
+
+        buttonsPanel.add(btnRoom);
+        buttonsPanel.add(btnCustomer);
+        buttonsPanel.add(btnReservation);
+        buttonsPanel.add(btnUndo);
+
+       
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(buttonsPanel, BorderLayout.CENTER);
+
+        add(mainPanel);
+
+        btnRoom.addActionListener(e -> new RoomForm(facade));
+        btnCustomer.addActionListener(e -> new CustomerForm(facade));
+        btnReservation.addActionListener(e -> new ReservationForm(facade));
+        
+        btnUndo.addActionListener(e -> {
+            facade.undoLastAction();
+            JOptionPane.showMessageDialog(this, "Last action undone successfully.");
+        });
 
         setVisible(true);
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainMenu());
+        new MainMenu();
     }
 }
-        

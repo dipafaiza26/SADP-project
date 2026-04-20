@@ -1,193 +1,139 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.ArrayList;
 
-public class RoomForm extends JFrame {
+public class RoomForm extends JFrame 
+{
 
-    private JTextField txtRoomNo, txtPrice;
-    private JComboBox<RoomType> cmbRoomType;
+    private CustomTextField txtRoomNo, txtPrice;
+    private JComboBox<RoomType> cmbType;
     private JTable table;
     private DefaultTableModel model;
-    private ArrayList<Room> roomList = new ArrayList<>();
-    private HotelFacade facade = new HotelFacade();
+    
+    private HotelFacade facade;
 
-    public RoomForm() {
-        setTitle("Room Management (Factory Pattern)");
-        setSize(600, 450);
+    public RoomForm(HotelFacade facade) {
+        this.facade = facade;
+
+        setTitle("AURORA HAVEN | Suite Management");
+        setSize(850, 650);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        initUI();
-        load();
-        setVisible(true);
-    }
 
-    private void initUI() {
-        JPanel inputPanel = new JPanel(new GridLayout(5, 2, 10, 10));
-        inputPanel.setBackground(Color.WHITE);
-        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel mainPanel = new JPanel(new BorderLayout(25, 25));
+        UITheme.stylePanel(mainPanel);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
-        JLabel title = new JLabel("Room Management System");
-        title.setFont(new Font("Arial", Font.BOLD, 18));
-        inputPanel.add(title);
-        inputPanel.add(new JLabel(""));
+       
+        RoundedPanel formCard = new RoundedPanel(25);
+        formCard.setBackground(Color.WHITE);
+        formCard.setLayout(new BorderLayout(15, 25));
+        formCard.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
-        inputPanel.add(new JLabel("Room Number:"));
-        txtRoomNo = new JTextField();
-        inputPanel.add(txtRoomNo);
+        JLabel title = new JLabel("Suite Information");
+        UITheme.styleTitle(title);
+        formCard.add(title, BorderLayout.NORTH);
 
-        inputPanel.add(new JLabel("Room Type:"));
-        cmbRoomType = new JComboBox<>(RoomType.values());
-        inputPanel.add(cmbRoomType);
+        JPanel inputGrid = new JPanel(new GridLayout(3, 2, 15, 20));
+        inputGrid.setOpaque(false);
 
-        inputPanel.add(new JLabel("Price:"));
-        txtPrice = new JTextField();
-        txtPrice.setEditable(false);
-        txtPrice.setBackground(Color.LIGHT_GRAY);
-        inputPanel.add(txtPrice);
+        JLabel lblRoomNo = new JLabel("Suite No:");
+        UITheme.styleLabel(lblRoomNo);
+        txtRoomNo = new CustomTextField();
 
-        JButton btnStandard = new JButton("Standard Room");
-        JButton btnCustom = new JButton("Custom Price");
-        JButton btnDiscount = new JButton("Discounted Room");
-        JButton btnSave = new JButton("Save");
-        JButton btnDelete = new JButton("Delete");
+        JLabel lblType = new JLabel("Collection Type:");
+        UITheme.styleLabel(lblType);
+        cmbType = new JComboBox<>(RoomType.values());
+        cmbType.setFont(UITheme.FONT_BODY);
+        cmbType.setBackground(Color.WHITE);
 
-        Color btnColor = Color.GRAY;
-        for (JButton b : new JButton[]{btnStandard, btnCustom, btnDiscount, btnSave, btnDelete}) {
-            b.setBackground(btnColor);
-            b.setForeground(Color.WHITE);
-        }
+        JLabel lblPrice = new JLabel("Rate per Night ($):");
+        UITheme.styleLabel(lblPrice);
+        txtPrice = new CustomTextField();
 
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 5, 10, 10));
-        buttonPanel.add(btnStandard);
-        buttonPanel.add(btnCustom);
-        buttonPanel.add(btnDiscount);
-        buttonPanel.add(btnSave);
-        buttonPanel.add(btnDelete);
+        inputGrid.add(lblRoomNo);
+        inputGrid.add(txtRoomNo);
+        inputGrid.add(lblType);
+        inputGrid.add(cmbType);
+        inputGrid.add(lblPrice);
+        inputGrid.add(txtPrice);
 
-        inputPanel.add(buttonPanel);
-        inputPanel.add(new JLabel(""));
+        JPanel centerWrapper = new JPanel(new BorderLayout());
+        centerWrapper.setOpaque(false);
+        centerWrapper.add(inputGrid, BorderLayout.NORTH);
+        formCard.add(centerWrapper, BorderLayout.CENTER);
 
-        model = new DefaultTableModel(new String[]{"Room No", "Type", "Price"}, 0);
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        actionPanel.setOpaque(false);
+        
+        RoundedButton btnSave = new RoundedButton("Save Suite");
+        RoundedButton btnDelete = new RoundedButton("Remove");
+        RoundedButton btnRefresh = new RoundedButton("Refresh");
+        
+        btnDelete.setColor(new Color(180, 80, 80));
+        btnDelete.setColorOver(new Color(200, 100, 100));
+
+        actionPanel.add(btnRefresh);
+        actionPanel.add(btnDelete);
+        actionPanel.add(btnSave);
+        formCard.add(actionPanel, BorderLayout.SOUTH);
+
+       
+        model = new DefaultTableModel(new String[]{"Suite No", "Collection", "Nightly Rate"}, 0);
         table = new JTable(model);
+        JScrollPane scrollPane = new JScrollPane(table);
+        UITheme.styleTable(table, scrollPane);
 
-        setLayout(new BorderLayout());
-        add(inputPanel, BorderLayout.NORTH);
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        mainPanel.add(formCard, BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        cmbRoomType.addActionListener(e -> updateDefaultPrice());
-        btnStandard.addActionListener(e -> createStandardRoom());
-        btnCustom.addActionListener(e -> createCustomPriceRoom());
-        btnDiscount.addActionListener(e -> createDiscountedRoom());
+        add(mainPanel);
+        refresh();
+
         btnSave.addActionListener(e -> saveRoom());
         btnDelete.addActionListener(e -> deleteRoom());
+        btnRefresh.addActionListener(e -> refresh());
 
-        updateDefaultPrice();
-    }
-
-    private void updateDefaultPrice() {
-        RoomType type = (RoomType) cmbRoomType.getSelectedItem();
-        double price = (type == RoomType.SINGLE) ? 100 : (type == RoomType.DOUBLE) ? 150 : 250;
-        txtPrice.setText(String.valueOf(price));
-    }
-
-    private void createStandardRoom() {
-        try {
-            int no = Integer.parseInt(txtRoomNo.getText());
-            RoomType type = (RoomType) cmbRoomType.getSelectedItem();
-            Room room = RoomFactory.createRoom(no, type);
-            roomList.add(room);
-            saveAndRefresh();
-            clearFields();
-            JOptionPane.showMessageDialog(this, "Standard room added");
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid room number");
-        }
-    }
-
-    private void createCustomPriceRoom() {
-        try {
-            int no = Integer.parseInt(txtRoomNo.getText());
-            RoomType type = (RoomType) cmbRoomType.getSelectedItem();
-            String priceStr = JOptionPane.showInputDialog(this, "Enter custom price:");
-            if (priceStr != null && !priceStr.isEmpty()) {
-                double price = Double.parseDouble(priceStr);
-                Room room = RoomFactory.createRoomWithCustomPrice(no, type, price);
-                roomList.add(room);
-                saveAndRefresh();
-                clearFields();
-                JOptionPane.showMessageDialog(this, "Custom price room added");
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Invalid input");
-        }
-    }
-
-    private void createDiscountedRoom() {
-        try {
-            int no = Integer.parseInt(txtRoomNo.getText());
-            RoomType type = (RoomType) cmbRoomType.getSelectedItem();
-            String discStr = JOptionPane.showInputDialog(this, "Discount percentage:");
-            if (discStr != null && !discStr.isEmpty()) {
-                double disc = Double.parseDouble(discStr);
-                Room room = RoomFactory.createRoomWithDiscount(no, type, disc);
-                roomList.add(room);
-                saveAndRefresh();
-                clearFields();
-                JOptionPane.showMessageDialog(this, "Discounted room added (" + disc + "%)");
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Invalid input");
-        }
+        setVisible(true);
     }
 
     private void saveRoom() {
         try {
-            int no = Integer.parseInt(txtRoomNo.getText());
-            RoomType type = (RoomType) cmbRoomType.getSelectedItem();
+            int roomNo = Integer.parseInt(txtRoomNo.getText());
+            RoomType type = (RoomType) cmbType.getSelectedItem();
             double price = Double.parseDouble(txtPrice.getText());
-            Room room = new Room(no, type, price);
-            roomList.add(room);
-            saveAndRefresh();
-            clearFields();
-            JOptionPane.showMessageDialog(this, "Room saved");
+
+            Room newRoom = HotelFactory.createRoom(roomNo, type, price);
+            facade.addRoom(newRoom);
+            
+            refresh();
+            txtRoomNo.setText("");
+            txtPrice.setText("");
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Invalid data");
+            JOptionPane.showMessageDialog(this, "Please enter valid numeric values.");
         }
     }
 
     private void deleteRoom() {
         int row = table.getSelectedRow();
         if (row >= 0) {
-            roomList.remove(row);
-            saveAndRefresh();
-            JOptionPane.showMessageDialog(this, "Room deleted");
+            facade.deleteRoom(row);
+            refresh();
         } else {
-            JOptionPane.showMessageDialog(this, "Select a room");
+            JOptionPane.showMessageDialog(this, "Select a record first");
         }
-    }
-
-    private void saveAndRefresh() {
-        facade.saveRooms(roomList);
-        refresh();
     }
 
     private void refresh() {
         model.setRowCount(0);
-        for (Room r : roomList) {
-            model.addRow(new Object[]{r.getRoomNo(), r.getRoomType(), r.getPrice()});
+        Iterator<Room> iterator = facade.getRooms();
+        while (iterator.hasNext()) {
+            Room r = iterator.next();
+            model.addRow(new Object[]{
+                    r.getRoomNo(),
+                    r.getRoomType(),
+                    "$" + String.format("%.2f", r.getPrice())
+            });
         }
     }
-
-    private void load() {
-        roomList = facade.loadRooms();
-        refresh();
-    }
-
-    private void clearFields() {
-        txtRoomNo.setText("");
-        cmbRoomType.setSelectedIndex(0);
-        updateDefaultPrice();
-    }
 }
-

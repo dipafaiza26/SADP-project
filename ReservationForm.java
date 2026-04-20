@@ -1,152 +1,157 @@
-import javax.swing.JFrame;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JTextField;
-import javax.swing.JTable;
-import javax.swing.JScrollPane;
-import javax.swing.JPanel;
-import javax.swing.JSpinner;
-import javax.swing.JOptionPane;
-
-import javax.swing.SpinnerDateModel;
+import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.GridLayout;
-
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
-import java.util.ArrayList;
+import java.awt.*;
 import java.util.Date;
+import java.text.SimpleDateFormat;
 
-public class ReservationForm extends JFrame {
+public class ReservationForm extends JFrame 
+{
 
-    private JTextField txtResId, txtRoomNo, txtCustomerId;
+    private CustomTextField txtResId, txtRoomNo, txtCustomerId;
     private JSpinner dateSpinner;
     private JTable table;
     private DefaultTableModel model;
+    
+    private HotelFacade facade;
 
-    private ArrayList<Reservation> reservationList = new ArrayList<>();
+    public ReservationForm(HotelFacade facade) {
+        this.facade = facade;
 
-    public ReservationForm() {
-
-        setTitle("Reservation Form");
-        setSize(700,400);
+        setTitle("AURORA HAVEN | Booking Operations");
+        setSize(850, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        JPanel panel = new JPanel(new GridLayout(6,2,5,5));
-        panel.setBackground(Color.WHITE);
+        JPanel mainPanel = new JPanel(new BorderLayout(25, 25));
+        UITheme.stylePanel(mainPanel);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
-        JLabel title = new JLabel("Reservation Information");
-        title.setFont(new Font("Arial", Font.BOLD, 18));
-        title.setForeground(Color.BLACK);
+        
+        RoundedPanel formCard = new RoundedPanel(25);
+        formCard.setBackground(Color.WHITE);
+        formCard.setLayout(new BorderLayout(15, 25));
+        formCard.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
-        panel.add(title);
-        panel.add(new JLabel(""));
+        JLabel title = new JLabel("Reservation Creation");
+        UITheme.styleTitle(title);
+        formCard.add(title, BorderLayout.NORTH);
 
-        panel.add(new JLabel("Reservation ID:"));
-        txtResId = new JTextField();
-        panel.add(txtResId);
+        JPanel inputGrid = new JPanel(new GridLayout(4, 2, 15, 20));
+        inputGrid.setOpaque(false);
 
-        panel.add(new JLabel("Room No:"));
-        txtRoomNo = new JTextField();
-        panel.add(txtRoomNo);
+        JLabel lblResId = new JLabel("Booking ID:");
+        UITheme.styleLabel(lblResId);
+        txtResId = new CustomTextField();
 
-        panel.add(new JLabel("Customer ID:"));
-        txtCustomerId = new JTextField();
-        panel.add(txtCustomerId);
+        JLabel lblRoomNo = new JLabel("Suite No:");
+        UITheme.styleLabel(lblRoomNo);
+        txtRoomNo = new CustomTextField();
 
-        panel.add(new JLabel("Reservation Date:"));
+        JLabel lblCustomer = new JLabel("Guest ID:");
+        UITheme.styleLabel(lblCustomer);
+        txtCustomerId = new CustomTextField();
+
+        JLabel lblDate = new JLabel("Check-in Date:");
+        UITheme.styleLabel(lblDate);
         dateSpinner = new JSpinner(new SpinnerDateModel());
-        panel.add(dateSpinner);
+        JSpinner.DateEditor editor = new JSpinner.DateEditor(dateSpinner, "MMM dd, yyyy");
+        dateSpinner.setEditor(editor);
+        dateSpinner.setFont(UITheme.FONT_BODY);
+        
+        JComponent editorComp = editor.getTextField();
+        editorComp.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        dateSpinner.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_GRAY, 1));
 
-        JButton btnSave = new JButton("Save");
-        JButton btnDelete = new JButton("Delete");
+        inputGrid.add(lblResId);
+        inputGrid.add(txtResId);
+        inputGrid.add(lblRoomNo);
+        inputGrid.add(txtRoomNo);
+        inputGrid.add(lblCustomer);
+        inputGrid.add(txtCustomerId);
+        inputGrid.add(lblDate);
+        inputGrid.add(dateSpinner);
 
-        btnSave.setBackground(Color.GRAY);
-        btnSave.setForeground(Color.WHITE);
+        JPanel centerWrapper = new JPanel(new BorderLayout());
+        centerWrapper.setOpaque(false);
+        centerWrapper.add(inputGrid, BorderLayout.NORTH);
+        formCard.add(centerWrapper, BorderLayout.CENTER);
 
-        btnDelete.setBackground(Color.GRAY);
-        btnDelete.setForeground(Color.WHITE);
+        
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        actionPanel.setOpaque(false);
+        
+        RoundedButton btnSave = new RoundedButton("Confirm Booking");
+        RoundedButton btnDelete = new RoundedButton("Cancel Booking");
+        RoundedButton btnRefresh = new RoundedButton("Refresh");
+        
+        btnDelete.setColor(new Color(180, 80, 80));
+        btnDelete.setColorOver(new Color(200, 100, 100));
 
-        panel.add(btnSave);
-        panel.add(btnDelete);
+        actionPanel.add(btnRefresh);
+        actionPanel.add(btnDelete);
+        actionPanel.add(btnSave);
+        formCard.add(actionPanel, BorderLayout.SOUTH);
 
-        model = new DefaultTableModel(
-                new String[]{"Res ID","Room","Customer","Date"},0);
+        
+        model = new DefaultTableModel(new String[]{"Booking ID", "Suite No", "Guest ID", "Date"}, 0);
         table = new JTable(model);
+        JScrollPane scrollPane = new JScrollPane(table);
+        UITheme.styleTable(table, scrollPane);
 
-        add(panel,"North");
-        add(new JScrollPane(table),"Center");
+        mainPanel.add(formCard, BorderLayout.NORTH);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        load();
+        add(mainPanel);
+        refresh();
 
         btnSave.addActionListener(e -> saveReservation());
         btnDelete.addActionListener(e -> deleteReservation());
+        btnRefresh.addActionListener(e -> refresh());
 
         setVisible(true);
     }
 
     private void saveReservation() {
-        Reservation r = new Reservation(
-                Integer.parseInt(txtResId.getText()),
-                Integer.parseInt(txtRoomNo.getText()),
-                Integer.parseInt(txtCustomerId.getText()),
-                (Date) dateSpinner.getValue()
-        );
-        reservationList.add(r);
-        save();
-        refresh();
+        try {
+            int resId = Integer.parseInt(txtResId.getText());
+            int roomNo = Integer.parseInt(txtRoomNo.getText());
+            int customerId = Integer.parseInt(txtCustomerId.getText());
+            Date date = (Date) dateSpinner.getValue();
+
+            Reservation newRes = HotelFactory.createReservation(resId, roomNo, customerId, date);
+            facade.addReservation(newRes);
+            
+            refresh();
+            txtResId.setText("");
+            txtRoomNo.setText("");
+            txtCustomerId.setText("");
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Please enter valid numeric IDs.");
+        }
     }
 
     private void deleteReservation() {
         int row = table.getSelectedRow();
-        if(row >= 0){
-            reservationList.remove(row);
-            save();
+        if (row >= 0) {
+            facade.deleteReservation(row);
             refresh();
         } else {
-            JOptionPane.showMessageDialog(this,"Select a row first");
+            JOptionPane.showMessageDialog(this, "Select a booking first");
         }
     }
 
     private void refresh() {
         model.setRowCount(0);
-        for(Reservation r : reservationList){
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
+        Iterator<Reservation> iterator = facade.getReservations();
+        while (iterator.hasNext()) {
+            Reservation r = iterator.next();
             model.addRow(new Object[]{
                     r.getReservationId(),
                     r.getRoomNo(),
                     r.getCustomerId(),
-                    r.getReservationDate()
+                    sdf.format(r.getReservationDate())
             });
-        }
-    }
-
-    private void save() {
-        try {
-            ObjectOutputStream oos =
-                    new ObjectOutputStream(new FileOutputStream("reservations.dat"));
-            oos.writeObject(reservationList);
-            oos.close();
-        } catch(Exception e){
-            e.printStackTrace();
-        }
-    }
-
-    private void load() {
-        try {
-            ObjectInputStream ois =
-                    new ObjectInputStream(new FileInputStream("reservations.dat"));
-            reservationList = (ArrayList<Reservation>) ois.readObject();
-            ois.close();
-            refresh();
-        } catch(Exception e){
-            reservationList = new ArrayList<>();
         }
     }
 }
