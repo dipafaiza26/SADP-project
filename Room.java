@@ -1,41 +1,76 @@
 import java.io.Serializable;
 
-public class Room implements Serializable 
-{
+// =============================================
+// STRATEGY PATTERN
+// =============================================
+
+interface PricingStrategy {
+    double calculate(double basePrice);
+    String name();
+}
+
+class RegularPricing implements PricingStrategy, Serializable {
+    public double calculate(double basePrice) { return basePrice; }
+    public String name()                      { return "Regular"; }
+}
+
+class DiscountPricing implements PricingStrategy, Serializable {
+    public double calculate(double basePrice) { return basePrice * 0.9; } // 10% off
+    public String name()                      { return "Discount (10% off)"; }
+}
+
+class PeakPricing implements PricingStrategy, Serializable {
+    public double calculate(double basePrice) { return basePrice * 1.2; } // 20% surcharge
+    public String name()                      { return "Peak (+20%)"; }
+}
+
+// =============================================
+// Room - uses a PricingStrategy
+// =============================================
+public class Room implements Serializable {
+
     private int roomNo;
     private RoomType roomType;
-    private double price;
+    private double basePrice;
+    private PricingStrategy pricingStrategy = new RegularPricing(); // default
 
-    public Room(int roomNo, RoomType roomType, double price) 
-    {
-        this.roomNo = roomNo;
-        this.roomType = roomType;
-        this.price = price;
-    }
-    public void setRoomNo(int roomNO)
-    {
-        this.roomNo=roomNo;
+    public Room(int roomNo, RoomType roomType, double basePrice) {
+        this.roomNo      = roomNo;
+        this.roomType    = roomType;
+        this.basePrice   = basePrice;
     }
 
-    public int getRoomNo() 
-    {
-        return roomNo;
+    // Swap strategy at any time
+    public void setPricingStrategy(PricingStrategy strategy) {
+        this.pricingStrategy = strategy;
     }
-    public void setRoomType(RoomType roomType)
-    {
-        this.roomType=roomType;
+
+    public String getStrategyName() {
+        return pricingStrategy != null ? pricingStrategy.name() : "Regular";
     }
-   
-    public RoomType getRoomType() 
+
+    // Price after applying the current strategy
+    public double getFinalPrice() 
     {
-        return roomType;
-    } 
-    public void setPrice(double price)
-    {
-        this.price=price;
+        return pricingStrategy != null ? pricingStrategy.calculate(basePrice) : basePrice;
     }
-    public double getPrice()
-    {
-        return price;
+
+    public int getRoomNo()                  
+    { 
+        return roomNo; 
+
     }
+    public void setRoomNo(int roomNo)        
+    {
+         this.roomNo = roomNo; 
+    }
+
+    public RoomType getRoomType()                { return roomType; }
+    public void     setRoomType(RoomType rt)     { this.roomType = rt; }
+
+    public double   getBasePrice()               { return basePrice; }
+    public void     setBasePrice(double p)       { this.basePrice = p; }
+
+    // Keep getPrice() so RoomForm still works without changes
+    public double   getPrice()                   { return getFinalPrice(); }
 }
